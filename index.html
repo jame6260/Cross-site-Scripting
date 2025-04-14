@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Forum with XSS Vulnerability</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Forum</h1>
+
+    <div id="userPanel" class="user-panel">
+      <h3>Welcome, <span id="displayUsername">User</span>!</h3>
+      <button id="logoutButton" class="primary-btn">Logout</button>
+    </div>
+
+    <div id="loginForm" class="login-form">
+      <h2>Login to Post a Comment</h2>
+      <form id="authForm">
+        <label for="username">Username:</label><br>
+        <input type="text" id="username" name="username" required>
+        <label for="password">Password:</label><br>
+        <input type="password" id="password" name="password" required>
+        <button type="submit" class="primary-btn">Login</button>
+      </form>
+    </div>
+
+    <h2>Comments</h2>
+    <div class="comment-section">
+      <div id="comments"></div>
+    </div>
+
+    <form id="commentForm">
+      <label for="commentInput">Add a comment:</label><br>
+      <textarea id="commentInput" name="commentInput" rows="3"></textarea><br>
+      <button type="submit" class="primary-btn">Post Comment</button>
+    </form>
+  </div>
+
+  <script>
+    // Simulated user database
+    const users = {
+      'admin': { password: 'admin123', role: 'admin' },
+      'user1': { password: 'password123', role: 'user' },
+      'user2': { password: 'passwordabc', role: 'user' }
+    };
+
+    function checkAuth() {
+      const currentUser = sessionStorage.getItem('currentUser');
+      if (currentUser) {
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('userPanel').style.display = 'block';
+        document.getElementById('displayUsername').textContent = currentUser;
+        document.getElementById('commentForm').style.display = 'block';
+      } else {
+        document.getElementById('loginForm').style.display = 'block';
+        document.getElementById('userPanel').style.display = 'none';
+        document.getElementById('commentForm').style.display = 'none';
+      }
+    }
+
+    checkAuth();
+
+    document.getElementById('authForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      if (users[username] && users[username].password === password) {
+        sessionStorage.setItem('currentUser', username);
+        sessionStorage.setItem('userRole', users[username].role);
+        checkAuth();
+      } else {
+        alert('Invalid username or password');
+      }
+    });
+
+    document.getElementById('logoutButton').addEventListener('click', function() {
+      sessionStorage.removeItem('currentUser');
+      sessionStorage.removeItem('userRole');
+      checkAuth();
+    });
+
+    document.getElementById('commentForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const currentUser = sessionStorage.getItem('currentUser');
+      if (!currentUser) {
+        alert('You must be logged in to post comments');
+        return;
+      }
+
+      const userInput = document.getElementById('commentInput').value;
+      const commentDiv = document.createElement('div');
+      commentDiv.className = 'comment';
+      commentDiv.innerHTML = `<strong>${currentUser}:</strong> ${userInput}`;
+      document.getElementById('comments').appendChild(commentDiv);
+      document.getElementById('commentInput').value = '';
+    });
+  </script>
+</body>
+</html>
