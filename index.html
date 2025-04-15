@@ -1,12 +1,16 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-  <title>Forum with XSS Vulnerability</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XSS Vulnerability Demo</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
   <div class="container">
-    <h1>Forum</h1>
+    <h1>Login</h1>
 
     <div id="userPanel" class="user-panel">
       <h3>Welcome, <span id="displayUsername">User</span>!</h3>
@@ -37,13 +41,6 @@
   </div>
 
   <script>
-    // Simulated user database
-    const users = {
-      'admin': { password: 'admin123', role: 'admin' },
-      'user1': { password: 'password123', role: 'user' },
-      'user2': { password: 'passwordabc', role: 'user' }
-    };
-
     function checkAuth() {
       const currentUser = sessionStorage.getItem('currentUser');
       if (currentUser) {
@@ -58,29 +55,56 @@
       }
     }
 
-    checkAuth();
+    function loadComments() {
+      fetch('get_comments.php')
+        .then(response => response.json())
+        .then(comments => {
+          const commentsContainer = document.getElementById('comments');
+          commentsContainer.innerHTML = '';
+          comments.forEach(comment => {
+            const commentDiv = document.createElement('div');
+            commentDiv.className = 'comment';
+            commentDiv.innerHTML = `<strong>${comment.username}:</strong> ${comment.comment}`;
+            commentsContainer.appendChild(commentDiv);
+          });
+        })
+        .catch(error => console.error('Error loading comments:', error));
+    }
 
-    document.getElementById('authForm').addEventListener('submit', function(e) {
+    document.getElementById('authForm').addEventListener('submit', function (e) {
       e.preventDefault();
       const username = document.getElementById('username').value;
       const password = document.getElementById('password').value;
 
-      if (users[username] && users[username].password === password) {
-        sessionStorage.setItem('currentUser', username);
-        sessionStorage.setItem('userRole', users[username].role);
-        checkAuth();
-      } else {
-        alert('Invalid username or password');
-      }
+      fetch('auth.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password })
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            sessionStorage.setItem('currentUser', username);
+            sessionStorage.setItem('userRole', data.role);
+            checkAuth();
+            loadComments();
+          } else {
+            alert('Invalid username or password');
+          }
+        })
+        .catch(error => console.error('Error during authentication:', error));
     });
 
-    document.getElementById('logoutButton').addEventListener('click', function() {
+
+    document.getElementById('logoutButton').addEventListener('click', function () {
       sessionStorage.removeItem('currentUser');
       sessionStorage.removeItem('userRole');
       checkAuth();
     });
 
-    document.getElementById('commentForm').addEventListener('submit', function(e) {
+    document.getElementById('commentForm').addEventListener('submit', function (e) {
       e.preventDefault();
       const currentUser = sessionStorage.getItem('currentUser');
       if (!currentUser) {
@@ -89,12 +113,33 @@
       }
 
       const userInput = document.getElementById('commentInput').value;
-      const commentDiv = document.createElement('div');
-      commentDiv.className = 'comment';
-      commentDiv.innerHTML = `<strong>${currentUser}:</strong> ${userInput}`;
-      document.getElementById('comments').appendChild(commentDiv);
-      document.getElementById('commentInput').value = '';
+      const commentData = {
+        username: currentUser,
+        comment: userInput
+      };
+
+      fetch('post_comment.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(commentData)
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            loadComments();
+            document.getElementById('commentInput').value = '';
+          } else {
+            alert('Error posting comment');
+          }
+        })
+        .catch(error => console.error('Error posting comment:', error));
     });
+
+    checkAuth();
+    loadComments();
   </script>
 </body>
+
 </html>
